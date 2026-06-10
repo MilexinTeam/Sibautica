@@ -25,22 +25,21 @@ jobs:
       - name: Run download.js
         run: node ./other/download.js
 
-      - name: Prepare artifacts
+      - name: Prepare ZIP content
         run: |
-          mkdir artifacts
+          mkdir release_root
 
-          # repo (bez .git)
-          rsync -av --exclude='.git' ./ ./artifacts/repo/
+          # skopiuj CAŁE repo (bez .git)
+          rsync -av --exclude='.git' ./ release_root/
 
-          # wygenerowane pliki
-          mkdir -p artifacts/generated
-          cp -r ./output/* artifacts/generated/ 2>/dev/null || true
-          cp -r ./other/output/* artifacts/generated/ 2>/dev/null || true
-          cp -r ./dist/* artifacts/generated/ 2>/dev/null || true
+          # skopiuj wygenerowane pliki (jeśli istnieją)
+          [ -d "./output" ] && rsync -av ./output/ release_root/output/
+          [ -d "./other/output" ] && rsync -av ./other/output/ release_root/other_output/
+          [ -d "./dist" ] && rsync -av ./dist/ release_root/dist/
 
       - name: Create ZIP
         run: |
-          cd artifacts
+          cd release_root
           zip -r ../release.zip .
 
       - name: Create tag name
