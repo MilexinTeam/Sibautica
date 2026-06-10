@@ -9,13 +9,13 @@ jobs:
   build_and_release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # pozwala tworzyć release
+      contents: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # potrzebne do pobrania wszystkich plików
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -25,26 +25,29 @@ jobs:
       - name: Run download.js
         run: node ./other/download.js
 
-      - name: Prepare artifacts folder
+      - name: Prepare artifacts
         run: |
           mkdir artifacts
 
-          echo "Kopiuję pliki z repo..."
-          cp -r ./* ./artifacts/ 2>/dev/null || true
+          # repo (bez .git)
+          rsync -av --exclude='.git' ./ ./artifacts/repo/
 
-          echo "Kopiuję wygenerowane pliki..."
-          cp -r ./output/* ./artifacts/ 2>/dev/null || true
-          cp -r ./other/output/* ./artifacts/ 2>/dev/null || true
-          cp -r ./dist/* ./artifacts/ 2>/dev/null || true
+          # wygenerowane pliki
+          mkdir -p artifacts/generated
+          cp -r ./output/* artifacts/generated/ 2>/dev/null || true
+          cp -r ./other/output/* artifacts/generated/ 2>/dev/null || true
+          cp -r ./dist/* artifacts/generated/ 2>/dev/null || true
 
-      - name: List artifacts
-        run: ls -R artifacts
+      - name: Create ZIP
+        run: |
+          cd artifacts
+          zip -r ../release.zip .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.sha }}
           name: ${{ github.event.head_commit.message }}
-          files: artifacts/**
+          files: release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
