@@ -4,33 +4,50 @@ import { exec } from "child_process";
 import https from "https";
 import http from "http";
 import url from "url";
+
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const BASE_DIR = path.join(__dirname, ".."); // Zakładam, że BASE_DIR to katalog nadrzędny względem "other"
+const BASE_DIR = path.join(__dirname, "..");
 
 // Wczytaj JSON
 const raw = fs.readFileSync(path.join(__dirname, "download.json"), "utf8");
 const items = JSON.parse(raw);
 
-// Pobieranie pliku
-function downloadFile(url, dest) {
+// Pobieranie pliku z obsługą redirectów
+function downloadFile(fileUrl, dest, redirectCount = 0) {
   return new Promise((resolve, reject) => {
-    const proto = url.startsWith("https") ? https : http;
+    if (redirectCount > 10) {
+      reject(new Error("Too many redirects"));
+      return;
+    }
 
-    const file = fs.createWriteStream(dest);
-    proto.get(url, res => {
+    const proto = fileUrl.startsWith("https") ? https : http;
+
+    proto.get(fileUrl, res => {
+      // Obsługa redirectów
+      if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
+        const newUrl = res.headers.location;
+        if (!newUrl) {
+          reject(new Error("Redirect without Location header"));
+          return;
+        }
+        console.log("Redirect:", res.statusCode, "→", newUrl);
+        return resolve(downloadFile(newUrl, dest, redirectCount + 1));
+      }
+
       if (res.statusCode !== 200) {
         reject(new Error("HTTP " + res.statusCode));
         return;
       }
 
+      const file = fs.createWriteStream(dest);
       res.pipe(file);
       file.on("finish", () => file.close(resolve));
     }).on("error", reject);
   });
 }
 
-// Uruchamianie komendy (bash/cmd) z cwd = BASE_DIR
+// Uruchamianie komendy (bash/cmd)
 function runCommand(cmd) {
   return new Promise((resolve, reject) => {
     exec(cmd, { shell: true, cwd: BASE_DIR }, (err, stdout, stderr) => {
@@ -42,18 +59,16 @@ function runCommand(cmd) {
 
 (async () => {
   for (const item of items) {
-    const url = item.url;
+    const fileUrl = item.url;
     const outPath = path.resolve(BASE_DIR, item.to);
     const post = item.postdownload;
 
-    // Tworzenie folderów
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
-    console.log("Pobieram:", url);
-    await downloadFile(url, outPath);
+    console.log("Pobieram:", fileUrl);
+    await downloadFile(fileUrl, outPath);
     console.log("Zapisano do:", outPath);
 
-    // Wykonaj postdownload TYLKO jeśli istnieje i nie jest pusty
     if (post && typeof post === "string" && post.trim() !== "") {
       console.log("Wykonuję postdownload:", post);
       await runCommand(post);
