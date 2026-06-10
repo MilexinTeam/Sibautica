@@ -1,0 +1,55 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run download.js
+        run: node ./other/download.js
+
+      - name: Archive generated files
+        run: |
+          mkdir artifacts
+          cp -r ./other/output/* ./artifacts/ 2>/dev/null || true
+          cp -r ./output/* ./artifacts/ 2>/dev/null || true
+          cp -r ./dist/* ./artifacts/ 2>/dev/null || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sibautica-build
+          path: artifacts/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sibautica-build
+          path: release-files
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: ${{ github.event.head_commit.message }}
+          files: release-files/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
