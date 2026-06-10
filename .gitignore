@@ -5,9 +5,9 @@ config/opened.txt
 scripts/wezterm.lua
 
 # --- FOLDERS TO IGNORE ---
-x64/
+
 nodejs/
-terminal/
+terminal/**
 
 # --- LOCALE FILES ---
 other/loc*.txt
