@@ -27,20 +27,20 @@ jobs:
 
       - name: Prepare ZIP content
         run: |
-          mkdir release_root
+          RELEASE_DIR="/tmp/release_root"
+          mkdir -p "$RELEASE_DIR"
 
-          # skopiuj CAŁE repo (bez .git)
-          rsync -av --exclude='.git' ./ release_root/
+          echo "Kopiuję repo..."
+          rsync -av --exclude='.git' ./ "$RELEASE_DIR/"
 
-          # skopiuj wygenerowane pliki (jeśli istnieją)
-          [ -d "./output" ] && rsync -av ./output/ release_root/output/
-          [ -d "./other/output" ] && rsync -av ./other/output/ release_root/other_output/
-          [ -d "./dist" ] && rsync -av ./dist/ release_root/dist/
+          echo "Kopiuję wygenerowane pliki..."
+          [ -d "./output" ] && rsync -av ./output/ "$RELEASE_DIR/output/"
+          [ -d "./other/output" ] && rsync -av ./other/output/ "$RELEASE_DIR/other_output/"
+          [ -d "./dist" ] && rsync -av ./dist/ "$RELEASE_DIR/dist/"
 
-      - name: Create ZIP
-        run: |
-          cd release_root
-          zip -r ../release.zip .
+          echo "Tworzę ZIP..."
+          cd "$RELEASE_DIR"
+          zip -r /tmp/release.zip .
 
       - name: Create tag name
         id: tag
@@ -51,6 +51,6 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ github.event.head_commit.message }}
-          files: release.zip
+          files: /tmp/release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
