@@ -1,4 +1,5 @@
-@echo off
-call "%~dp0scripts\beforestart.bat"
-echo sibauticash> .\config\opened.txt
-call "%~dp0scripts\shibshell.bat"
+﻿@echo off
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
+node scripts\shell.js
+endlocal

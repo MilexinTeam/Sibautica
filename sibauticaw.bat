@@ -1,4 +1,5 @@
-@echo off
-call "%~dp0scripts\beforestart.bat"
-echo sibauticama> .\config\opened.txt
-call "%~dp0scripts\sibautica.bat" %1
+﻿@echo off
+setlocal enabledelayedexpansion
+cd /d "%~dp0"
+node scripts\entrypoint.js --from-terminal
+endlocal

@@ -1,11 +1,10 @@
-# --- CONFIG ---
+﻿# --- CONFIG ---
 config/opened.txt
 
 # --- SCRIPTS ---
-scripts/wezterm.lua
+scripts/.wezterm.lua
 
 # --- FOLDERS TO IGNORE ---
-
 nodejs/**
 terminal/**
 
@@ -27,3 +26,5 @@ temp/
 node_modules/
 npm-debug.log
 yarn-error.log
+package-lock.json
+yarn.lock
