@@ -1,6 +1,0 @@
-return {
-  default_prog = {
-    "cmd.exe", "/k",
-    "V:/sibautica/scripts/shibshell.bat"
-  },
-}
