@@ -1,0 +1,56 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run download.js
+        run: node ./.github/workflows/download.js
+
+      - name: Prepare ZIP content
+        run: |
+          RELEASE_DIR="/tmp/release_root"
+          mkdir -p "$RELEASE_DIR"
+
+          echo "Kopiuję repo..."
+          rsync -av --exclude='.git' ./ "$RELEASE_DIR/"
+
+          echo "Kopiuję wygenerowane pliki..."
+          [ -d "./output" ] && rsync -av ./output/ "$RELEASE_DIR/output/"
+          [ -d "./other/output" ] && rsync -av ./other/output/ "$RELEASE_DIR/other_output/"
+          [ -d "./dist" ] && rsync -av ./dist/ "$RELEASE_DIR/dist/"
+
+          echo "Tworzę ZIP..."
+          cd "$RELEASE_DIR"
+          zip -r /tmp/release.zip .
+
+      - name: Create tag name
+        id: tag
+        run: echo "tag=build-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ github.event.head_commit.message }}
+          files: /tmp/release.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
