@@ -2,11 +2,11 @@
     {
         "url": "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/WezTerm-windows-20240203-110809-5046fc22.zip",
         "to": "./terminal/wezterm.zip",
-        "postdownload": "unzip -o terminal/wezterm.zip -d terminal && rm -f terminal/wezterm.zip"
+        "postdownload": "unzip -o terminal/wezterm.zip -d terminal && rm -f terminal/wezterm.zip && cp -r terminal/WezTerm-*/* terminal && rm -rf terminal/WezTerm-*"
     },
     {
         "url": "https://nodejs.org/dist/v24.16.0/node-v24.16.0-win-x64.zip",
         "to": "./nodejs/node.zip",
-        "postdownload": "unzip -o nodejs/node.zip -d nodejs && rm -f nodejs/node.zip && npm i && npx tsc"
+        "postdownload": "unzip -o nodejs/node.zip -d nodejs && rm -f nodejs/node.zip && cp -r nodejs/node-*/* nodejs && rm -rf nodejs/node-* && npm i && npx tsc"
     }
 ]
