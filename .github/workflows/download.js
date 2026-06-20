@@ -7,7 +7,7 @@ import url from "url";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const BASE_DIR = path.join(__dirname, "..");
+const BASE_DIR = path.join(__dirname, "..", "..");
 
 // Wczytaj JSON
 const raw = fs.readFileSync(path.join(__dirname, "download.json"), "utf8");
