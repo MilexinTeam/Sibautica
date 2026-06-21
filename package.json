@@ -17,19 +17,13 @@
   "bin": "./dist/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:exe": "pkg ."
+    "build:exe": "nexe dist/main.js -o release/sibautica.exe"
   },
   "dependencies": {
     "@types/node": "^26.0.0",
     "typescript": "^6.0.3"
   },
-  "pkg": {
-    "scripts": [
-      "dist/*"
-    ],
-    "targets": [
-      "node20-win-x64"
-    ],
-    "outputPath": "release"
+  "devDependencies": {
+    "nexe": "^5.0.0-beta.4"
   }
 }
