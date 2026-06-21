@@ -24,11 +24,7 @@
     "typescript": "^6.0.3"
   },
   "devDependencies": {
-    "7zip-bin": "^5.2.0",
-    "bytenode": "^1.5.7",
     "fs-extra": "^11.3.5",
-    "node-7z-archive": "^1.1.7",
-    "nodec": "^0.0.0",
     "unzipper": "^0.12.3"
   }
 }

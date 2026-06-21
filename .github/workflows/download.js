@@ -109,5 +109,5 @@ function run(cmd) {
 
   console.log("Kompiluję TypeScript...");
   await run("npx tsc");
-
+process.exit(0)
 })();
