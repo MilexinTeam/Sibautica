@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_and_release:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: write
 
@@ -22,35 +22,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Run download.js
-        run: node ./.github/workflows/download.js
+      - name: Download nodec
+        run: |
+          Invoke-WebRequest "https://github.com/pmq20/node-compiler/releases/download/v1.4.2/nodec-win-x64.exe" -OutFile "nodec.exe"
+
+      - name: Install deps + run download.js
+        run: |
+          npm i
+          node .\.github\workflows\download.js
 
       - name: Prepare ZIP content
         run: |
-          RELEASE_DIR="/tmp/release_root"
-          mkdir -p "$RELEASE_DIR"
-
-          echo "Kopiuję repo..."
-          rsync -av --exclude='.git' ./ "$RELEASE_DIR/"
-
-          echo "Kopiuję wygenerowane pliki..."
-          [ -d "./output" ] && rsync -av ./output/ "$RELEASE_DIR/output/"
-          [ -d "./other/output" ] && rsync -av ./other/output/ "$RELEASE_DIR/other_output/"
-          [ -d "./dist" ] && rsync -av ./dist/ "$RELEASE_DIR/dist/"
-
-          echo "Tworzę ZIP..."
-          cd "$RELEASE_DIR"
-          zip -r /tmp/release.zip .
+          New-Item -ItemType Directory -Force -Path release_root
+          Copy-Item -Recurse -Force * release_root
+          Compress-Archive -Path release_root\* -DestinationPath release.zip
 
       - name: Create tag name
         id: tag
-        run: echo "tag=build-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "tag=build-$($env:GITHUB_SHA.Substring(0,7))" >> $env:GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ github.event.head_commit.message }}
-          files: /tmp/release.zip
+          files: release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

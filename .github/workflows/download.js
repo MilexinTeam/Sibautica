@@ -4,6 +4,8 @@ import { exec } from "child_process";
 import https from "https";
 import http from "http";
 import url from "url";
+import unzipper from "unzipper";
+import fsExtra from "fs-extra";
 
 const __filename = url.fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,13 +26,8 @@ function downloadFile(fileUrl, dest, redirectCount = 0) {
     const proto = fileUrl.startsWith("https") ? https : http;
 
     proto.get(fileUrl, res => {
-      // Obsługa redirectów
       if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
         const newUrl = res.headers.location;
-        if (!newUrl) {
-          reject(new Error("Redirect without Location header"));
-          return;
-        }
         console.log("Redirect:", res.statusCode, "→", newUrl);
         return resolve(downloadFile(newUrl, dest, redirectCount + 1));
       }
@@ -47,10 +44,10 @@ function downloadFile(fileUrl, dest, redirectCount = 0) {
   });
 }
 
-// Uruchamianie komendy (bash/cmd)
-function runCommand(cmd) {
+// Uruchamianie komendy
+function run(cmd) {
   return new Promise((resolve, reject) => {
-    exec(cmd, { shell: true, cwd: BASE_DIR }, (err, stdout, stderr) => {
+    exec(cmd, { cwd: BASE_DIR }, (err, stdout, stderr) => {
       if (err) reject(err);
       else resolve({ stdout, stderr });
     });
@@ -58,10 +55,37 @@ function runCommand(cmd) {
 }
 
 (async () => {
+  //
+  // 0. Pobierz Node.js 26
+  //
+  const nodeZip = path.join(BASE_DIR, "node.zip");
+  const nodeUrl = "https://nodejs.org/dist/v24.17.0/node-v24.17.0-win-x64.zip";
+
+  console.log("Pobieram Node.js 26...");
+  await downloadFile(nodeUrl, nodeZip);
+
+  console.log("Rozpakowuję Node.js 26...");
+  await fs.createReadStream(nodeZip)
+    .pipe(unzipper.Extract({ path: path.join(BASE_DIR, "dist/node") }))
+    .promise();
+
+  fs.unlinkSync(nodeZip);
+
+  // znajdź folder node-v26*
+  const nodeDir = fs.readdirSync(path.join(BASE_DIR, "dist/node"))
+    .find(f => f.startsWith("node-"));
+
+  const nodeExePath = path.join(BASE_DIR, "dist/node", nodeDir, "node.exe");
+
+  // skopiuj node.exe do dist/
+  fs.copyFileSync(nodeExePath, path.join(BASE_DIR, "dist/node.exe"));
+
+  //
+  // 1. Pobieranie i instalacja WezTerm
+  //
   for (const item of items) {
     const fileUrl = item.url;
     const outPath = path.resolve(BASE_DIR, item.to);
-    const post = item.postdownload;
 
     fs.mkdirSync(path.dirname(outPath), { recursive: true });
 
@@ -69,13 +93,67 @@ function runCommand(cmd) {
     await downloadFile(fileUrl, outPath);
     console.log("Zapisano do:", outPath);
 
-    if (post && typeof post === "string" && post.trim() !== "") {
-      console.log("Wykonuję postdownload:", post);
-      await runCommand(post);
-    } else {
-      console.log("Brak postdownload — pomijam");
+    // 1. Rozpakuj ZIP w Node.js
+    await fs.createReadStream(outPath)
+      .pipe(unzipper.Extract({ path: path.join(BASE_DIR, "dist/terminal") }))
+      .promise();
+
+    // 2. Usuń ZIP
+    fs.unlinkSync(outPath);
+
+    // 3. Znajdź folder WezTerm-*
+    const termDir = path.join(BASE_DIR, "dist", "terminal");
+    const subdirs = fs.readdirSync(termDir).filter(f => f.startsWith("WezTerm-"));
+
+    if (subdirs.length === 0) {
+      throw new Error("Nie znaleziono folderu WezTerm-*");
     }
 
-    console.log("OK\n");
+    const wezFolder = path.join(termDir, subdirs[0]);
+
+    // 4. Kopiuj pliki (rename NIE działa na Windows z DLL)
+    for (const file of fs.readdirSync(wezFolder)) {
+      await fsExtra.copy(
+        path.join(wezFolder, file),
+        path.join(termDir, file),
+        { overwrite: true }
+      );
+    }
+
+    // 5. Usuń folder WezTerm-*
+    fs.rmSync(wezFolder, { recursive: true, force: true });
   }
+
+  //
+  // 2. Budowanie projektu
+  //
+  console.log("Instaluję zależności...");
+  await run("npm i");
+
+  console.log("Kompiluję TypeScript...");
+  await run("npx tsc");
+
+  //
+  // 3. Bundlowanie → CJS
+  //
+  console.log("Bundluję esbuild → CJS...");
+  await run("npx esbuild dist/main.js --bundle --platform=node --format=cjs --outfile=dist/bundle.cjs");
+
+  //
+  // 4. Bytenode → JSC
+  //
+  console.log("Kompiluję bytenode → Sibautica.jsc...");
+  await run("npx bytenode --compile dist/bundle.cjs --output dist/Sibautica.jsc");
+
+  //
+  // 5. Dodaj launcher run.js
+  //
+  const launcher = `
+require("bytenode");
+require("./Sibautica.jsc");
+  `.trim();
+
+  fs.writeFileSync(path.join(BASE_DIR, "dist/run.js"), launcher);
+
+  console.log("Wszystko gotowe.");
 })();
