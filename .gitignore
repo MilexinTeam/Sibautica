@@ -1,4 +1,4 @@
 node_modules/
 dist/
-terminal/
-nodejs/
+dist/terminal/
+dist/nodejs/
